@@ -129,8 +129,6 @@ def convert_runner(video: cv2.VideoCapture, width: int, filename: str) -> None:
 
     frames = convert_video_to_ascii(filename, video, width)
 
-    filename = filename.split(".")[0]
-
     VideoWorker.save_video(frames, filename, original_width, original_height, fps)
 
     logging.info(f"[{filename}] Finished processing.")
