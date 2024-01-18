@@ -4,7 +4,7 @@ import random
 import string
 
 FILES_DIR = "./files"
-DELIMITER = "~"
+DELIMITER = "\\~"
 
 if not os.path.exists(FILES_DIR):
     os.makedirs(FILES_DIR)
