@@ -62,16 +62,19 @@ def convert_frame_to_ascii(frame: Any, width: int) -> str:
 
     image = Image.fromarray(frame)
     image = image.convert("L")
-    image.thumbnail((width, width))
 
-    image_width, image_height = image.size
+    aspect_ratio = image.width / image.height
+
+    height = aspect_ratio * width * 0.55
+
+    image = image.resize((width, int(height)))
 
     pixels_str = ""
 
     for pixel in image.getdata():
         pixels_str += CHARS[pixel // (math.ceil(255 / len(CHARS)) + 1)]
 
-    pixels_array = [pixels_str[i:i + image_width] for i in range(0, len(pixels_str), image_width)]
+    pixels_array = [pixels_str[i:i + width] for i in range(0, len(pixels_str), width)]
 
     return "\n".join(pixels_array)
 
