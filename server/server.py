@@ -70,7 +70,7 @@ def convert_frame_to_ascii(frame: Any, width: int) -> str:
     image = Image.fromarray(frame)
     image = image.convert("L")
 
-    aspect_ratio = image.width / image.height
+    aspect_ratio = image.height / image.width
 
     height = aspect_ratio * width * 0.55
 
