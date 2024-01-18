@@ -46,7 +46,8 @@ def schedule_cleanup(filename: str) -> None:
         Cleans up the cache.
         """
         time.sleep(10 * 60)
-        del CACHE[filename]
+        if CACHE.get(filename):
+            del CACHE[filename]
 
     CLEANUP[filename] = StoppableThread(target=cleanup)
     CLEANUP[filename].start()
