@@ -1,4 +1,3 @@
-import datetime
 import math
 import tempfile
 import time
@@ -140,6 +139,18 @@ async def get_file(filename: str, frames: int = 0, reference_id: str = None):
         "frames": frames,
         "reference_id": reference_id,
         "completed": worker.completed(reference_id),
+        "fps": worker.fps,
+        "original_width": worker.original_width,
+        "original_height": worker.original_height
+    }
+
+
+@app.get("/files/{filename}/info")
+async def get_file_info(filename: str):
+    worker = get_video_worker(filename)
+
+    return {
+        "frames_count": len(worker.frames),
         "fps": worker.fps,
         "original_width": worker.original_width,
         "original_height": worker.original_height
