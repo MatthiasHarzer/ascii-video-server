@@ -1,6 +1,8 @@
 import gzip
 import os
 
+from fastapi import HTTPException
+
 FILES_DIR = "./files"
 DELIMITER = "\\~"
 
@@ -13,7 +15,7 @@ class VideoWorker:
         self.file = f"{FILES_DIR}/{filename}.txt.gz"
 
         if not os.path.exists(self.file):
-            raise FileNotFoundError(f"File {self.file} not found")
+            raise HTTPException(status_code=404, detail=f"File {filename} not found")
 
         with gzip.open(self.file, "rb", compresslevel=5) as f:
             content = f.read().decode("utf-8")
@@ -26,7 +28,7 @@ class VideoWorker:
         self.frames = content.split(f"\n{DELIMITER}\n")
 
         if len(self.frames) == 0:
-            raise ValueError("No frames found")
+            raise HTTPException(status_code=400, detail="No frames found")
 
         self.frames[0] = "\n".join(self.frames[0].split("\n")[1:])
 
