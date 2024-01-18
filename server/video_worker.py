@@ -1,4 +1,5 @@
 import gzip
+import logging
 import os
 
 from fastapi import HTTPException
@@ -91,6 +92,8 @@ class VideoWorker:
         :param filename: The filename to save to
         """
         file = f"{FILES_DIR}/{filename}.txt.gz"
+
+        logging.info(f"[{filename}] Saving video with {len(frames)} frames to {file}.")
 
         if os.path.exists(file):
             os.remove(file)

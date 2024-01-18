@@ -1,3 +1,4 @@
+import logging
 import math
 import tempfile
 import time
@@ -5,14 +6,20 @@ from typing import Any
 
 import cv2
 from PIL import Image
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, HTTPException
 
 from server.stoppable_thread import StoppableThread
 from server.video_worker import VideoWorker
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 CHARS = ["A", "O", "#", "&", "@", "$", "%", "*", "<", ":", "9", '+', '5', 'X', 'M']
 CACHE: dict[str, VideoWorker] = {}
 CLEANUP: dict[str, StoppableThread] = {}
+RUNNER: dict[str, StoppableThread] = {}
+PROGRESS: dict[str, float] = {}
+
+MAX_PARALLEL_RUNS = 2
 
 app = FastAPI()
 
@@ -79,9 +86,10 @@ def convert_frame_to_ascii(frame: Any, width: int) -> str:
     return "\n".join(pixels_array)
 
 
-def convert_video_to_ascii(video: cv2.VideoCapture, width: int) -> list[str]:
+def convert_video_to_ascii(filename: str, video: cv2.VideoCapture, width: int) -> list[str]:
     """
     Converts the video to ascii art.
+    :param filename: The filename
     :param width: The width of the ascii art
     :param video: The file to convert
     :return: The ascii art
@@ -89,11 +97,21 @@ def convert_video_to_ascii(video: cv2.VideoCapture, width: int) -> list[str]:
 
     frames: list[str] = []
 
+    number_of_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    frame_num = 0
+
     while video.isOpened():
+        frame_num += 1
         ret, frame = video.read()
 
         if not ret:
             break
+
+        if frame_num % 100 == 0:
+            logging.info(f"[{filename}] Processing frame {frame_num} of {number_of_frames}...")
+
+        PROGRESS[filename] = frame_num / number_of_frames
 
         color_converted_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frames.append(convert_frame_to_ascii(color_converted_frame, width))
@@ -102,30 +120,62 @@ def convert_video_to_ascii(video: cv2.VideoCapture, width: int) -> list[str]:
     return frames
 
 
+def convert_runner(video: cv2.VideoCapture, width: int, filename: str) -> None:
+    original_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
+    original_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = int(video.get(cv2.CAP_PROP_FPS))
+
+    logging.info(f"[{filename}] Starting processing.")
+
+    frames = convert_video_to_ascii(filename, video, width)
+
+    filename = filename.split(".")[0]
+
+    VideoWorker.save_video(frames, filename, original_width, original_height, fps)
+
+    logging.info(f"[{filename}] Finished processing.")
+
+    del RUNNER[filename]
+    del PROGRESS[filename]
+
+
 @app.post("/convert")
 async def convert_uploaded(file: UploadFile, width: int = 240):
-    print(file.filename, width)
+    filename = ".".join(file.filename.split(".")[:-1])
+
+    logging.info(f"Received file {file.filename}.")
+
+    if filename in RUNNER:
+        raise HTTPException(status_code=409, detail="File is already processing")
+
+    if len(RUNNER) >= MAX_PARALLEL_RUNS:
+        raise HTTPException(status_code=409, detail="Too many parallel runs")
 
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(file.file.read())
         temp.flush()
         video = cv2.VideoCapture(temp.name)
 
-        original_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
-        original_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = int(video.get(cv2.CAP_PROP_FPS))
+        thread = StoppableThread(target=convert_runner, args=(video, width, filename))
+        thread.start()
 
-        frames = convert_video_to_ascii(video, width)
+        RUNNER[filename] = thread
 
-        filename = file.filename.split(".")[0]
-
-        VideoWorker.save_video(frames, filename, original_width, original_height, fps)
-
-        return {"filename": filename, "width": original_width, "height": original_height, "fps": fps}
+        return {
+            "state": "processing",
+            "filename": filename
+        }
 
 
 @app.get("/files/{filename}")
 async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
+    if filename in RUNNER:
+        raise HTTPException(status_code=409, detail={
+            "state": "processing",
+            "progress": round(PROGRESS[filename] * 10000) / 100,
+            "message": "File is still processing"
+        })
+
     worker = get_video_worker(filename)
 
     schedule_cleanup(filename)
@@ -147,6 +197,13 @@ async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
 
 @app.get("/files/{filename}/info")
 async def get_file_info(filename: str):
+    if filename in RUNNER:
+        raise HTTPException(status_code=409, detail={
+            "state": "processing",
+            "progress": f"{round(PROGRESS[filename] * 10000) / 100} %",
+            "message": "File is still processing"
+        })
+
     worker = get_video_worker(filename)
 
     return {
