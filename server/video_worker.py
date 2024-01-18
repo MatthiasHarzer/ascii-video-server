@@ -1,28 +1,11 @@
 import gzip
 import os
-import random
-import string
 
 FILES_DIR = "./files"
 DELIMITER = "\\~"
 
 if not os.path.exists(FILES_DIR):
     os.makedirs(FILES_DIR)
-
-
-def _get_random_string(length: int, not_: list[str] = None) -> str:
-    """
-    Generates a random string.
-    :param length: The length of the string
-    :return: The random string
-    """
-    str_ = "".join(random.choices(string.ascii_letters + string.digits, k=length))
-
-    if not_ is not None:
-        while str_ in not_:
-            str_ = "".join(random.choices(string.ascii_letters + string.digits, k=length))
-
-    return str_
 
 
 class VideoWorker:
@@ -52,14 +35,19 @@ class VideoWorker:
         Maps reference ids to the current frame.
         """
 
-    def new_client(self) -> str:
-        """
-        Creates a new reference id.
-        :return: The reference id
-        """
-        reference_id = _get_random_string(10, not_=list(self.memory.keys()))
-        self.memory[reference_id] = 0
-        return reference_id
+    def get_all_frames(self) -> dict[int, str]:
+        return {i: self.frames[i] for i in range(len(self.frames))}
+
+    def get_frames(self, frame_position: int, frame_count: int) -> dict[int, str]:
+        if frame_position >= len(self.frames):
+            return {}
+
+        new_frame = frame_position + frame_count
+
+        if new_frame >= len(self.frames):
+            new_frame = len(self.frames) - 1
+
+        return {i: self.frames[i] for i in range(frame_position, new_frame)}
 
     def advance_frames(self, reference_id: str, frames_count: int) -> list[str]:
         """

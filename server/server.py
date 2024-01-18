@@ -125,23 +125,20 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
 
 
 @app.get("/files/{filename}")
-async def get_file(filename: str, frames: int = 0, reference_id: str = None):
+async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
     worker = get_video_worker(filename)
 
     schedule_cleanup(filename)
 
     if frames <= 0:
-        return {"frames": worker.frames}
+        return {
+            "frames": worker.get_all_frames()
+        }
 
-    if reference_id is None:
-        reference_id = worker.new_client()
-
-    frames = worker.advance_frames(reference_id, frames)
+    frames = worker.get_frames(start_frame, frames)
 
     return {
         "frames": frames,
-        "reference_id": reference_id,
-        "completed": worker.completed(reference_id),
         "fps": worker.fps,
         "original_width": worker.original_width,
         "original_height": worker.original_height
