@@ -3,10 +3,12 @@ version: '3.8'
 services:
   minimal-cors-server:
     build:
-      context: https://github.com/MatthiasHarzer/ascii-video-server.git
+#      context: https://github.com/MatthiasHarzer/ascii-video-server.git
       dockerfile: Dockerfile
     ports:
       - "9997:8000"
+    environment:
+      - ALWAYS_LOADED_FILES=
     volumes:
       - ./files:/app/files
     restart: always

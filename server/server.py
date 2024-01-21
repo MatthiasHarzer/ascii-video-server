@@ -1,5 +1,6 @@
 import logging
 import math
+import os
 import tempfile
 import time
 from typing import Any
@@ -18,6 +19,7 @@ CACHE: dict[str, VideoWorker] = {}
 CLEANUP: dict[str, StoppableThread] = {}
 RUNNER: dict[str, StoppableThread] = {}
 PROGRESS: dict[str, float] = {}
+ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
 
 MAX_PARALLEL_RUNS = 2
 
@@ -37,11 +39,22 @@ def get_video_worker(filename: str) -> VideoWorker:
     return CACHE[filename]
 
 
+for filename in ALWAYS_LOADED_FILES:
+    if not filename:
+        continue
+    try:
+        get_video_worker(filename)
+    except Exception as e:
+        logging.warning(f"Failed to load file {filename}: {e}")
+
+
 def schedule_cleanup(filename: str) -> None:
     """
     Schedules the given filename for cleanup.
     :param filename: The filename
     """
+    if filename in ALWAYS_LOADED_FILES:
+        return
     existing_thread = CLEANUP.get(filename)
 
     if existing_thread:
