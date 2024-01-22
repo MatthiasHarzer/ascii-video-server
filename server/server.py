@@ -8,6 +8,7 @@ from typing import Any
 import cv2
 from PIL import Image
 from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi.middleware.gzip import GZipMiddleware
 
 from server.stoppable_thread import StoppableThread
 from server.video_worker import VideoWorker
@@ -24,6 +25,7 @@ ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
 MAX_PARALLEL_RUNS = 2
 
 app = FastAPI()
+app.add_middleware(GZipMiddleware)
 
 
 def get_video_worker(filename: str) -> VideoWorker:
@@ -39,13 +41,13 @@ def get_video_worker(filename: str) -> VideoWorker:
     return CACHE[filename]
 
 
-for filename in ALWAYS_LOADED_FILES:
-    if not filename:
+for _filename in ALWAYS_LOADED_FILES:
+    if not _filename:
         continue
     try:
-        get_video_worker(filename)
+        get_video_worker(_filename)
     except Exception as e:
-        logging.warning(f"Failed to load file {filename}: {e}")
+        logging.warning(f"Failed to load file {_filename}: {e}")
 
 
 def schedule_cleanup(filename: str) -> None:
