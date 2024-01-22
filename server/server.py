@@ -8,7 +8,6 @@ from typing import Any
 import cv2
 from PIL import Image
 from fastapi import FastAPI, UploadFile, HTTPException
-from fastapi.middleware.gzip import GZipMiddleware
 
 from server.stoppable_thread import StoppableThread
 from server.video_worker import VideoWorker
@@ -25,7 +24,6 @@ ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
 MAX_PARALLEL_RUNS = 2
 
 app = FastAPI()
-app.add_middleware(GZipMiddleware)
 
 
 def get_video_worker(filename: str) -> VideoWorker:
