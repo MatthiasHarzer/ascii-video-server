@@ -3,8 +3,9 @@ import os
 import tempfile
 
 import cv2
-from fastapi import FastAPI, UploadFile, HTTPException
+from fastapi import FastAPI, UploadFile, HTTPException, Depends
 
+from server import auth
 from server.video_cache import get_video_worker
 from server.video_renderer import VideoRenderer
 
@@ -57,7 +58,7 @@ def _clear_dead_runners():
     RUNNER = {k: v for k, v in RUNNER.items() if v.running}
 
 
-@app.post("/convert")
+@app.post("/convert", dependencies=[Depends(auth.api_key_auth)])
 async def convert_uploaded(file: UploadFile, width: int = 240):
     """
     Converts the given file to ascii art.
