@@ -3,6 +3,8 @@
 A python server that converts video files to ascii videos and streams them to the browser.
 [See it in action](https://just-a.web.app/).
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ## Setup
 
 - Copy the [docker-compose.yml](docker-compose.yml) file to your server.
