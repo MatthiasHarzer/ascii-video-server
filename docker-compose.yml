@@ -10,6 +10,7 @@ services:
     environment:
       - ALWAYS_LOADED_FILES=
       - API_KYE=
+      - MAX_PARALLEL_RUNS=5
     volumes:
       - ./files:/app/files
     restart: always

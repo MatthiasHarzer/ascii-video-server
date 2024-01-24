@@ -36,7 +36,7 @@ logger = logging.getLogger("ascii-video-server")
 
 RUNNER: dict[str, VideoRenderer] = {}
 ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
-MAX_PARALLEL_RUNS = 2
+MAX_PARALLEL_RUNS = int(os.environ.get("MAX_PARALLEL_RUNS", 5))
 
 app = FastAPI()
 
@@ -107,14 +107,12 @@ async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
     worker = get_video_worker(filename)
 
     if frames <= 0:
-        return {
-            "frames": worker.get_all_frames()
-        }
-
-    frames = worker.get_frames(start_frame, frames)
+        frames_to_send = worker.get_all_frames()
+    else:
+        frames_to_send = worker.get_frames(start_frame, frames)
 
     return {
-        "frames": frames,
+        "frames": frames_to_send,
         "fps": worker.fps,
         "original_width": worker.original_width,
         "original_height": worker.original_height
