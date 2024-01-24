@@ -9,6 +9,7 @@ services:
       - "9997:8000"
     environment:
       - ALWAYS_LOADED_FILES=
+      - API_KYE=
     volumes:
       - ./files:/app/files
     restart: always
