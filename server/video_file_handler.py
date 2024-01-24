@@ -89,7 +89,7 @@ class VideoFileHandler:
         """
         file = f"{FILES_DIR}/{filename}.txt.gz"
 
-        logger.info(f"[{filename}] Saving video with {len(frames)} frames to {file}.")
+        logger.info(f"[{filename}] Saving video with {len(frames)} frames to {file}")
 
         if os.path.exists(file):
             os.remove(file)

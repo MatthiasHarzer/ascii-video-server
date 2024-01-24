@@ -1,4 +1,4 @@
-import logging
+import logging.config
 import os
 import tempfile
 
@@ -8,7 +8,29 @@ from fastapi import FastAPI, UploadFile, HTTPException
 from server.video_cache import get_video_worker
 from server.video_renderer import VideoRenderer
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.config.dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "%(asctime)s - %(levelname)s - %(message)s"
+        },
+    },
+    "handlers": {
+        "default": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout",
+        },
+    },
+    "loggers": {
+        "ascii-video-server": {
+            "level": "INFO",
+            "handlers": ["default"],
+            "propagate": False
+        }
+    },
+})
 logger = logging.getLogger("ascii-video-server")
 
 RUNNER: dict[str, VideoRenderer] = {}
@@ -27,6 +49,14 @@ for _filename in ALWAYS_LOADED_FILES:
         logger.warning(f"Failed to load file {_filename}: {e}")
 
 
+def _clear_dead_runners():
+    """
+    Clears all dead runners.
+    """
+    global RUNNER
+    RUNNER = {k: v for k, v in RUNNER.items() if v.running}
+
+
 @app.post("/convert")
 async def convert_uploaded(file: UploadFile, width: int = 240):
     """
@@ -35,6 +65,7 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
     :param width: The width (number of characters) of the ascii art. Height is calculated automatically.
     :return: The ascii art
     """
+    _clear_dead_runners()
     filename = ".".join(file.filename.split(".")[:-1])
 
     logger.info(f"Received file {file.filename}.")
@@ -48,6 +79,7 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
     with tempfile.NamedTemporaryFile() as temp:
         temp.write(file.file.read())
         temp.flush()
+
         video = cv2.VideoCapture(temp.name)
 
         renderer = VideoRenderer(video, width, filename)

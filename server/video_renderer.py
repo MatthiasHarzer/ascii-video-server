@@ -1,6 +1,6 @@
 import logging
 import math
-from multiprocessing import Process
+from threading import Thread
 
 import cv2
 from PIL import Image
@@ -17,26 +17,31 @@ class VideoRenderer:
     Renders a video to ascii-coded frames.
     """
 
+    @property
+    def running(self) -> bool:
+        """
+        Returns whether the process is running.
+        :return: Whether the process is running
+        """
+        return self.thread.is_alive()
+
     def __init__(self, video: cv2.VideoCapture, width: int, video_name: str):
         """
         Creates a new video renderer, that exports the provided video to an ascii-coded video file.
-        :param video: The video to export
+        :param video: The video to render
         :param width: The width of the ascii art
         :param video_name: The name of the video on the disk
         """
         self.target_width = width
-        self.video = video
         self.video_name = video_name
+        self.video = video
         self.original_width = int(video.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.original_height = int(video.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.number_of_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
         self.fps = int(video.get(cv2.CAP_PROP_FPS))
         self.progress = 0
+        self.thread = Thread(target=self._run)
 
-        if self.number_of_frames == 0:
-            raise ValueError("The video has no frames!")
-
-        self.process = Process(target=self._run)
 
     def _render_frame(self, frame: Mat) -> str:
         """
@@ -95,6 +100,8 @@ class VideoRenderer:
         """
         Runs the rendering process.
         """
+        logger.info(f"[{self.video_name}] Initializing process")
+
         frames = self._render()
 
         logger.info(f"[{self.video_name}] Rendering finished, writing to disk")
@@ -105,4 +112,4 @@ class VideoRenderer:
         """
         Starts the rendering process.
         """
-        self.process.start()
+        self.thread.start()
