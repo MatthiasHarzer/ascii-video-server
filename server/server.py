@@ -7,6 +7,7 @@ from fastapi import FastAPI, UploadFile, HTTPException, Depends
 
 from server import auth
 from server.video_cache import get_video_worker
+from server.video_file_handler import VideoFileHandler
 from server.video_renderer import VideoRenderer
 
 logging.config.dictConfig({
@@ -96,15 +97,7 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
 
 @app.get("/files/{filename}")
 async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
-    runner = RUNNER.get(filename)
-    if runner:
-        raise HTTPException(status_code=409, detail={
-            "state": "processing",
-            "progress": f"{round(runner.progress * 10000) / 100} %",
-            "message": "File is still processing"
-        })
-
-    worker = get_video_worker(filename)
+    worker = try_get_worker(filename)
 
     if frames <= 0:
         frames_to_send = worker.get_all_frames()
@@ -119,8 +112,8 @@ async def get_file(filename: str, start_frame: int = 0, frames: int = 0):
     }
 
 
-@app.get("/files/{filename}/info")
-async def get_file_info(filename: str):
+def try_get_worker(filename) -> VideoFileHandler:
+    _clear_dead_runners()
     runner = RUNNER.get(filename)
     if runner:
         raise HTTPException(status_code=409, detail={
@@ -129,7 +122,12 @@ async def get_file_info(filename: str):
             "message": "File is still processing"
         })
 
-    worker = get_video_worker(filename)
+    return get_video_worker(filename)
+
+
+@app.get("/files/{filename}/info")
+async def get_file_info(filename: str):
+    worker = try_get_worker(filename)
 
     return {
         "frames_count": len(worker.frames),
