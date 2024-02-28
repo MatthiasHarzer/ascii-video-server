@@ -80,7 +80,7 @@ Some environment variables can be set to configure the server:
 |----------------------|------------------------------------------------------------------------------------------------------------|
 | MAX_PARALLEL_RUNS    | Sets the number of parallel video conversions that can run on the server. Further requests will be denied. |
 | ALWAYS_LOADED_FILES  | A comma-seperated list of video files to permanently keep loaded in the RAM for faster access.             |
-| API_KEY              | The API key required to access the `/convert` endpoint. If unset, the endpoint will be unrestricted.       |
+| API_KEY              | The API key required to access the `/convert` endpoint (`X-API-Key`-header). If unset, the endpoint will be unrestricted.       |
 
 ## See Also
 
