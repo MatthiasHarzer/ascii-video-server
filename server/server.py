@@ -1,39 +1,13 @@
-import logging.config
 import os
 import tempfile
 
 import cv2
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
 
-from server import auth
+from server import auth, log
 from server.video_cache import get_video_worker
 from server.video_file_handler import VideoFileHandler
 from server.video_renderer import VideoRenderer
-
-logging.config.dictConfig({
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "simple": {
-            "format": "%(asctime)s - %(levelname)s - %(message)s"
-        },
-    },
-    "handlers": {
-        "default": {
-            "class": "logging.StreamHandler",
-            "formatter": "simple",
-            "stream": "ext://sys.stdout",
-        },
-    },
-    "loggers": {
-        "ascii-video-server": {
-            "level": "INFO",
-            "handlers": ["default"],
-            "propagate": False
-        }
-    },
-})
-logger = logging.getLogger("ascii-video-server")
 
 RUNNER: dict[str, VideoRenderer] = {}
 ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
@@ -46,9 +20,9 @@ for _filename in ALWAYS_LOADED_FILES:
         continue
     try:
         get_video_worker(_filename, True)
-        logger.info(f"Loaded file {_filename}")
+        log.info(f"Loaded file {_filename}")
     except Exception as e:
-        logger.warning(f"Failed to load file {_filename}: {e}")
+        log.warning(f"Failed to load file {_filename}: {e}")
 
 
 def _clear_dead_runners():
@@ -56,7 +30,7 @@ def _clear_dead_runners():
     Clears all dead runners.
     """
     global RUNNER
-    RUNNER = {k: v for k, v in RUNNER.items() if v.running}
+    RUNNER = {k: v for k, v in RUNNER.items() if v.running and not k in ALWAYS_LOADED_FILES}
 
 
 @app.post("/convert", dependencies=[Depends(auth.api_key_auth)])
@@ -70,7 +44,7 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
     _clear_dead_runners()
     filename = ".".join(file.filename.split(".")[:-1])
 
-    logger.info(f"Received file {file.filename}.")
+    log.info(f"Received file {file.filename}.")
 
     if filename in RUNNER:
         raise HTTPException(status_code=409, detail="File is already processing")
