@@ -23,4 +23,3 @@ logging.config.dictConfig({
         }
     },
 })
-log = logging.getLogger("ascii-video-server")

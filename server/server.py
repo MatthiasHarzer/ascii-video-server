@@ -1,10 +1,11 @@
+import logging
 import os
 import tempfile
 
 import cv2
 from fastapi import FastAPI, UploadFile, HTTPException, Depends
 
-from server import auth, log
+from server.auth import api_key_auth
 from server.video_cache import get_video_worker
 from server.video_file_handler import VideoFileHandler
 from server.video_renderer import VideoRenderer
@@ -14,15 +15,16 @@ ALWAYS_LOADED_FILES = os.environ.get("ALWAYS_LOADED_FILES", "").split(",")
 MAX_PARALLEL_RUNS = int(os.environ.get("MAX_PARALLEL_RUNS", 5))
 
 app = FastAPI()
+logger = logging.getLogger("ascii-video-server")
 
 for _filename in ALWAYS_LOADED_FILES:
     if not _filename:
         continue
     try:
         get_video_worker(_filename, True)
-        log.info(f"Loaded file {_filename}")
+        logger.info(f"Loaded file {_filename}")
     except Exception as e:
-        log.warning(f"Failed to load file {_filename}: {e}")
+        logger.warning(f"Failed to load file {_filename}: {e}")
 
 
 def _clear_dead_runners():
@@ -33,7 +35,7 @@ def _clear_dead_runners():
     RUNNER = {k: v for k, v in RUNNER.items() if v.running and not k in ALWAYS_LOADED_FILES}
 
 
-@app.post("/convert", dependencies=[Depends(auth.api_key_auth)])
+@app.post("/convert", dependencies=[Depends(api_key_auth)])
 async def convert_uploaded(file: UploadFile, width: int = 240):
     """
     Converts the given file to ascii art.
@@ -44,7 +46,7 @@ async def convert_uploaded(file: UploadFile, width: int = 240):
     _clear_dead_runners()
     filename = ".".join(file.filename.split(".")[:-1])
 
-    log.info(f"Received file {file.filename}.")
+    logger.info(f"Received file {file.filename}.")
 
     if filename in RUNNER:
         raise HTTPException(status_code=409, detail="File is already processing")
